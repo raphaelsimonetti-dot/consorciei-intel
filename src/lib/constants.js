@@ -81,4 +81,5 @@ export const RELEVANCE = {
 export const SOURCE_TYPES = {
   news: { label: 'Notícias', icon: '📰' },
   youtube: { label: 'YouTube', icon: '▶️' },
+  fundos_cvm: { label: 'Fundos CVM', icon: '🏦' },
 }

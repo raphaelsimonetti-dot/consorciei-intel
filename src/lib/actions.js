@@ -27,3 +27,18 @@ export async function markSlackShared(id) {
     .update({ slack_shared: true, slack_shared_at: new Date().toISOString() })
     .eq('id', id)
 }
+
+export async function saveFeedback(feedbackData) {
+  return supabase.from('intel_feedback').insert([feedbackData])
+}
+
+export async function signInWithGoogle() {
+  return supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin },
+  })
+}
+
+export async function signOut() {
+  return supabase.auth.signOut()
+}

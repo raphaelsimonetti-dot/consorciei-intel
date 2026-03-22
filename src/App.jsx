@@ -6,6 +6,7 @@ import DateNavigation from './components/DateNavigation'
 import StatsBar from './components/StatsBar'
 import FilterBar from './components/FilterBar'
 import IntelFeed from './components/IntelFeed'
+import AvaliacoesView from './components/AvaliacoesView'
 
 function App() {
   const today = format(new Date(), 'yyyy-MM-dd')
@@ -19,10 +20,23 @@ function App() {
     relevance: '',
     strategic: false,
   })
+  const [activeTab, setActiveTab] = useState('intel')
+  const [user, setUser] = useState(null)
+
+  // Auth state listener
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   useEffect(() => {
-    fetchItems(selectedDate)
-  }, [selectedDate])
+    if (activeTab === 'intel') fetchItems(selectedDate)
+  }, [selectedDate, activeTab])
 
   async function fetchItems(date) {
     setLoading(true)
@@ -48,7 +62,6 @@ function App() {
     }
   }
 
-  // Optimistic update from card interactions
   function handleItemUpdate(id, updates) {
     setItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
@@ -67,32 +80,39 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#F2F5F9] text-[#333]">
-      <Header />
+      <Header user={user} activeTab={activeTab} onTabChange={setActiveTab} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        <DateNavigation
-          selectedDate={selectedDate}
-          onDateChange={(date) => {
-            setSelectedDate(date)
-            setFilters({ category: '', sourceType: '', relevance: '', strategic: false })
-          }}
-        />
+        {activeTab === 'intel' ? (
+          <>
+            <DateNavigation
+              selectedDate={selectedDate}
+              onDateChange={(date) => {
+                setSelectedDate(date)
+                setFilters({ category: '', sourceType: '', relevance: '', strategic: false })
+              }}
+            />
 
-        <StatsBar items={items} loading={loading} />
+            <StatsBar items={items} loading={loading} />
 
-        <FilterBar
-          filters={filters}
-          onChange={setFilters}
-          totalItems={items.length}
-          filteredCount={filteredItems.length}
-        />
+            <FilterBar
+              filters={filters}
+              onChange={setFilters}
+              totalItems={items.length}
+              filteredCount={filteredItems.length}
+            />
 
-        <IntelFeed
-          items={filteredItems}
-          loading={loading}
-          error={error}
-          onUpdate={handleItemUpdate}
-        />
+            <IntelFeed
+              items={filteredItems}
+              loading={loading}
+              error={error}
+              onUpdate={handleItemUpdate}
+              user={user}
+            />
+          </>
+        ) : (
+          <AvaliacoesView />
+        )}
       </main>
     </div>
   )

@@ -12,7 +12,8 @@ import {
 } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { updateUserRelevance, updateTags, markSlackShared } from '../lib/actions'
+import { updateUserRelevance, updateTags, markSlackShared, saveFeedback } from '../lib/actions'
+import FeedbackModal from './FeedbackModal'
 
 const STRATEGIC_LABELS = {
   parceria: 'Parceria',
@@ -22,11 +23,12 @@ const STRATEGIC_LABELS = {
   pessoas: 'Pessoas-chave',
 }
 
-export default function IntelCard({ item, onUpdate }) {
+export default function IntelCard({ item, onUpdate, user }) {
   const [localItem, setLocalItem] = useState(item)
   const [isEditingTags, setIsEditingTags] = useState(false)
   const [newTagInput, setNewTagInput] = useState('')
   const [saving, setSaving] = useState(null) // 'relevance' | 'slack'
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
 
   const category = CATEGORIES[localItem.category] || {
     label: localItem.category,
@@ -55,7 +57,6 @@ export default function IntelCard({ item, onUpdate }) {
     ? format(parseISO(localItem.published_date), 'd MMM', { locale: ptBR })
     : null
 
-  // YouTube fix: use video_id to build URL if url is missing/empty
   const itemUrl =
     localItem.url ||
     (isYouTube && localItem.video_id
@@ -64,8 +65,8 @@ export default function IntelCard({ item, onUpdate }) {
 
   // --- Actions ---
 
-  async function handleRelevance(value) {
-    const newValue = localItem.user_relevance === value ? null : value
+  async function handleThumbsUp() {
+    const newValue = localItem.user_relevance === true ? null : true
     setSaving('relevance')
     const updates = {
       user_relevance: newValue,
@@ -74,6 +75,62 @@ export default function IntelCard({ item, onUpdate }) {
     setLocalItem((prev) => ({ ...prev, ...updates }))
     onUpdate?.(localItem.id, updates)
     await updateUserRelevance(localItem.id, newValue)
+    if (newValue === true) {
+      await saveFeedback({
+        collected_date: localItem.collected_date,
+        item_title: localItem.title,
+        item_url: localItem.url || null,
+        item_source: localItem.source_name || null,
+        item_category: localItem.category || null,
+        source_type: localItem.source_type || null,
+        action: 'relevant',
+        user_email: user?.email || null,
+        user_name: user?.user_metadata?.full_name || null,
+        user_avatar: user?.user_metadata?.avatar_url || null,
+      })
+    }
+    setSaving(null)
+  }
+
+  async function handleThumbsDown() {
+    // If already marked irrelevant, toggle off without modal
+    if (localItem.user_relevance === false) {
+      setSaving('relevance')
+      const updates = { user_relevance: null, user_relevance_at: null }
+      setLocalItem((prev) => ({ ...prev, ...updates }))
+      onUpdate?.(localItem.id, updates)
+      await updateUserRelevance(localItem.id, null)
+      setSaving(null)
+      return
+    }
+    // Otherwise open modal for reason
+    setShowFeedbackModal(true)
+  }
+
+  async function handleFeedbackConfirm({ reasonCategory, reasonText }) {
+    setShowFeedbackModal(false)
+    setSaving('relevance')
+    const updates = {
+      user_relevance: false,
+      user_relevance_at: new Date().toISOString(),
+    }
+    setLocalItem((prev) => ({ ...prev, ...updates }))
+    onUpdate?.(localItem.id, updates)
+    await updateUserRelevance(localItem.id, false)
+    await saveFeedback({
+      collected_date: localItem.collected_date,
+      item_title: localItem.title,
+      item_url: localItem.url || null,
+      item_source: localItem.source_name || null,
+      item_category: localItem.category || null,
+      source_type: localItem.source_type || null,
+      action: 'irrelevant',
+      reason_category: reasonCategory,
+      reason_text: reasonText || null,
+      user_email: user?.email || null,
+      user_name: user?.user_metadata?.full_name || null,
+      user_avatar: user?.user_metadata?.avatar_url || null,
+    })
     setSaving(null)
   }
 
@@ -121,7 +178,6 @@ export default function IntelCard({ item, onUpdate }) {
         console.error('Slack webhook error:', e)
       }
     } else {
-      // Fallback: copy formatted text to clipboard
       const text = `${localItem.title}\n\n${localItem.summary || ''}\n\n${itemUrl || ''}`
       try { navigator.clipboard.writeText(text) } catch (_) {}
     }
@@ -133,232 +189,242 @@ export default function IntelCard({ item, onUpdate }) {
   }
 
   return (
-    <article
-      className={`bg-white border rounded-xl p-4 hover:shadow-md transition-all group flex flex-col shadow-sm ${
-        isHighRelevance ? 'border-amber-300' : 'border-[#E2E8F0]'
-      }`}
-    >
-      {/* Top row: category + relevance + strategic + source */}
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <span
-          className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border ${category.bg} ${category.color} ${category.border}`}
-        >
-          <span className={`w-1.5 h-1.5 rounded-full ${category.dot}`}></span>
-          {category.label}
-        </span>
+    <>
+      {showFeedbackModal && (
+        <FeedbackModal
+          item={localItem}
+          onConfirm={handleFeedbackConfirm}
+          onCancel={() => setShowFeedbackModal(false)}
+        />
+      )}
 
-        {relevance && (
+      <article
+        className={`bg-white border rounded-xl p-4 hover:shadow-md transition-all group flex flex-col shadow-sm ${
+          isHighRelevance ? 'border-amber-300' : 'border-[#E2E8F0]'
+        } ${localItem.user_relevance === false ? 'opacity-60' : ''}`}
+      >
+        {/* Top row: category + relevance + strategic + source */}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
           <span
-            className={`text-xs px-2 py-0.5 rounded-full border ${relevance.bg} ${relevance.color} ${relevance.border}`}
+            className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border ${category.bg} ${category.color} ${category.border}`}
           >
-            {relevance.label}
+            <span className={`w-1.5 h-1.5 rounded-full ${category.dot}`}></span>
+            {category.label}
           </span>
-        )}
 
-        {localItem.is_strategic && (
-          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 font-semibold">
-            <Target size={10} />
-            {STRATEGIC_LABELS[localItem.strategic_category] || 'Estratégico'}
-          </span>
-        )}
-
-        <span className="ml-auto flex items-center gap-1 text-xs text-slate-400">
-          {isYouTube ? (
-            <>
-              <Youtube size={12} className="text-red-500" />
-              <span className="text-red-500">YouTube</span>
-            </>
-          ) : (
-            <>
-              <span>📰</span>
-              <span>{localItem.source_name || 'Notícia'}</span>
-            </>
-          )}
-        </span>
-      </div>
-
-      {/* Title */}
-      <h3 className="text-[#063793] font-bold text-sm sm:text-base leading-snug mb-2 group-hover:text-[#063793]/80 transition-colors">
-        {itemUrl ? (
-          <a href={itemUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
-            {localItem.title}
-          </a>
-        ) : (
-          localItem.title
-        )}
-      </h3>
-
-      {/* Summary */}
-      {localItem.summary && (
-        <p className="text-slate-500 text-sm leading-relaxed mb-3 line-clamp-3">
-          {localItem.summary}
-        </p>
-      )}
-
-      {/* YouTube-specific: channel + duration + watch link */}
-      {isYouTube && (
-        <div className="flex flex-wrap items-center gap-3 mb-3 text-xs text-slate-400">
-          {localItem.channel_name && (
-            <span className="text-slate-500">📺 {localItem.channel_name}</span>
-          )}
-          {localItem.duration_minutes && (
-            <span className="flex items-center gap-1">
-              <Clock size={11} />
-              {localItem.duration_minutes} min
-            </span>
-          )}
-          {localItem.video_id && (
-            <a
-              href={`https://youtube.com/watch?v=${localItem.video_id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-red-500 hover:text-red-600 transition-colors font-semibold"
-            >
-              <ExternalLink size={11} />
-              Assistir
-            </a>
-          )}
-        </div>
-      )}
-
-      {/* Key topics (YouTube) */}
-      {keyTopics.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {keyTopics.slice(0, 4).map((topic, i) => (
+          {relevance && (
             <span
-              key={i}
-              className="text-xs bg-[#E7ECF5] text-[#063793] px-2 py-0.5 rounded-md border border-[#063793]/10"
+              className={`text-xs px-2 py-0.5 rounded-full border ${relevance.bg} ${relevance.color} ${relevance.border}`}
             >
-              {topic}
+              {relevance.label}
             </span>
-          ))}
-        </div>
-      )}
+          )}
 
-      {/* Tags (editable) */}
-      <div className="flex flex-wrap gap-1.5 mb-3 min-h-[24px]">
-        {tags.map((tag, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-1 text-xs bg-[#F2F5F9] text-slate-500 px-2 py-0.5 rounded-md border border-[#E2E8F0] hover:bg-[#E7ECF5] transition-colors"
-          >
-            #{tag}
-            {isEditingTags && (
-              <button
-                onClick={() => handleRemoveTag(tag)}
-                className="text-slate-400 hover:text-red-500 transition-colors ml-0.5"
-              >
-                <X size={10} />
-              </button>
+          {localItem.is_strategic && (
+            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 font-semibold">
+              <Target size={10} />
+              {STRATEGIC_LABELS[localItem.strategic_category] || 'Estratégico'}
+            </span>
+          )}
+
+          <span className="ml-auto flex items-center gap-1 text-xs text-slate-400">
+            {isYouTube ? (
+              <>
+                <Youtube size={12} className="text-red-500" />
+                <span className="text-red-500">YouTube</span>
+              </>
+            ) : (
+              <>
+                <span>📰</span>
+                <span>{localItem.source_name || 'Notícia'}</span>
+              </>
             )}
           </span>
-        ))}
+        </div>
 
-        {isEditingTags && (
-          <div className="flex items-center gap-1">
-            <input
-              type="text"
-              value={newTagInput}
-              onChange={(e) => setNewTagInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleAddTag()
-                if (e.key === 'Escape') setIsEditingTags(false)
-              }}
-              placeholder="nova tag"
-              autoFocus
-              className="text-xs bg-white text-slate-600 placeholder-slate-300 border border-[#E2E8F0] rounded-md px-2 py-0.5 w-24 focus:outline-none focus:border-[#063793]/40"
-            />
-            <button
-              onClick={handleAddTag}
-              className="text-xs text-[#063793] hover:text-[#063793]/70 px-1 font-bold"
-            >
-              +
-            </button>
+        {/* Title */}
+        <h3 className="text-[#063793] font-bold text-sm sm:text-base leading-snug mb-2 group-hover:text-[#063793]/80 transition-colors">
+          {itemUrl ? (
+            <a href={itemUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+              {localItem.title}
+            </a>
+          ) : (
+            localItem.title
+          )}
+        </h3>
+
+        {/* Summary */}
+        {localItem.summary && (
+          <p className="text-slate-500 text-sm leading-relaxed mb-3 line-clamp-3">
+            {localItem.summary}
+          </p>
+        )}
+
+        {/* YouTube-specific */}
+        {isYouTube && (
+          <div className="flex flex-wrap items-center gap-3 mb-3 text-xs text-slate-400">
+            {localItem.channel_name && (
+              <span className="text-slate-500">📺 {localItem.channel_name}</span>
+            )}
+            {localItem.duration_minutes && (
+              <span className="flex items-center gap-1">
+                <Clock size={11} />
+                {localItem.duration_minutes} min
+              </span>
+            )}
+            {localItem.video_id && (
+              <a
+                href={`https://youtube.com/watch?v=${localItem.video_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-red-500 hover:text-red-600 transition-colors font-semibold"
+              >
+                <ExternalLink size={11} />
+                Assistir
+              </a>
+            )}
           </div>
         )}
 
-        <button
-          onClick={() => setIsEditingTags((v) => !v)}
-          className={`text-xs px-1.5 py-0.5 rounded-md transition-colors ${
-            isEditingTags
-              ? 'text-[#063793] bg-[#E7ECF5]'
-              : 'text-slate-300 hover:text-slate-500 hover:bg-[#F2F5F9]'
-          }`}
-          title="Editar tags"
-        >
-          {isEditingTags ? '✓ feito' : '# editar'}
-        </button>
-      </div>
+        {/* Key topics */}
+        {keyTopics.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {keyTopics.slice(0, 4).map((topic, i) => (
+              <span
+                key={i}
+                className="text-xs bg-[#E7ECF5] text-[#063793] px-2 py-0.5 rounded-md border border-[#063793]/10"
+              >
+                {topic}
+              </span>
+            ))}
+          </div>
+        )}
 
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Footer: date + action buttons */}
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#E2E8F0]">
-        <span className="text-xs text-slate-400">
-          {publishedDate ||
-            (localItem.collected_date
-              ? format(parseISO(localItem.collected_date), 'd MMM', { locale: ptBR })
-              : '')}
-        </span>
-
-        <div className="flex items-center gap-0.5">
-          {/* Thumbs up — relevante */}
-          <button
-            onClick={() => handleRelevance(true)}
-            disabled={saving === 'relevance'}
-            title="Relevante"
-            className={`p-1.5 rounded-lg transition-colors ${
-              localItem.user_relevance === true
-                ? 'text-emerald-600 bg-emerald-50'
-                : 'text-slate-300 hover:text-emerald-600 hover:bg-emerald-50'
-            }`}
-          >
-            <ThumbsUp size={13} />
-          </button>
-
-          {/* Thumbs down — irrelevante */}
-          <button
-            onClick={() => handleRelevance(false)}
-            disabled={saving === 'relevance'}
-            title="Irrelevante"
-            className={`p-1.5 rounded-lg transition-colors ${
-              localItem.user_relevance === false
-                ? 'text-red-500 bg-red-50'
-                : 'text-slate-300 hover:text-red-500 hover:bg-red-50'
-            }`}
-          >
-            <ThumbsDown size={13} />
-          </button>
-
-          {/* Slack share */}
-          <button
-            onClick={handleShareSlack}
-            disabled={localItem.slack_shared || saving === 'slack'}
-            title={localItem.slack_shared ? 'Já copiado' : 'Copiar / Compartilhar'}
-            className={`p-1.5 rounded-lg transition-colors ${
-              localItem.slack_shared
-                ? 'text-emerald-600 bg-emerald-50 cursor-default'
-                : 'text-slate-300 hover:text-emerald-600 hover:bg-emerald-50'
-            }`}
-          >
-            <Send size={13} />
-          </button>
-
-          {/* External link (news only) */}
-          {itemUrl && !isYouTube && (
-            <a
-              href={itemUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Abrir fonte"
-              className="p-1.5 rounded-lg text-slate-300 hover:text-[#063793] hover:bg-[#E7ECF5] transition-colors"
+        {/* Tags (editable) */}
+        <div className="flex flex-wrap gap-1.5 mb-3 min-h-[24px]">
+          {tags.map((tag, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 text-xs bg-[#F2F5F9] text-slate-500 px-2 py-0.5 rounded-md border border-[#E2E8F0] hover:bg-[#E7ECF5] transition-colors"
             >
-              <ExternalLink size={13} />
-            </a>
+              #{tag}
+              {isEditingTags && (
+                <button
+                  onClick={() => handleRemoveTag(tag)}
+                  className="text-slate-400 hover:text-red-500 transition-colors ml-0.5"
+                >
+                  <X size={10} />
+                </button>
+              )}
+            </span>
+          ))}
+
+          {isEditingTags && (
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={newTagInput}
+                onChange={(e) => setNewTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddTag()
+                  if (e.key === 'Escape') setIsEditingTags(false)
+                }}
+                placeholder="nova tag"
+                autoFocus
+                className="text-xs bg-white text-slate-600 placeholder-slate-300 border border-[#E2E8F0] rounded-md px-2 py-0.5 w-24 focus:outline-none focus:border-[#063793]/40"
+              />
+              <button
+                onClick={handleAddTag}
+                className="text-xs text-[#063793] hover:text-[#063793]/70 px-1 font-bold"
+              >
+                +
+              </button>
+            </div>
           )}
+
+          <button
+            onClick={() => setIsEditingTags((v) => !v)}
+            className={`text-xs px-1.5 py-0.5 rounded-md transition-colors ${
+              isEditingTags
+                ? 'text-[#063793] bg-[#E7ECF5]'
+                : 'text-slate-300 hover:text-slate-500 hover:bg-[#F2F5F9]'
+            }`}
+            title="Editar tags"
+          >
+            {isEditingTags ? '✓ feito' : '# editar'}
+          </button>
         </div>
-      </div>
-    </article>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Footer: date + action buttons */}
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#E2E8F0]">
+          <span className="text-xs text-slate-400">
+            {publishedDate ||
+              (localItem.collected_date
+                ? format(parseISO(localItem.collected_date), 'd MMM', { locale: ptBR })
+                : '')}
+          </span>
+
+          <div className="flex items-center gap-0.5">
+            {/* Thumbs up — relevante */}
+            <button
+              onClick={handleThumbsUp}
+              disabled={saving === 'relevance'}
+              title="Relevante"
+              className={`p-1.5 rounded-lg transition-colors ${
+                localItem.user_relevance === true
+                  ? 'text-emerald-600 bg-emerald-50'
+                  : 'text-slate-300 hover:text-emerald-600 hover:bg-emerald-50'
+              }`}
+            >
+              <ThumbsUp size={13} />
+            </button>
+
+            {/* Thumbs down — irrelevante (abre modal) */}
+            <button
+              onClick={handleThumbsDown}
+              disabled={saving === 'relevance'}
+              title={localItem.user_relevance === false ? 'Remover avaliação' : 'Marcar como irrelevante'}
+              className={`p-1.5 rounded-lg transition-colors ${
+                localItem.user_relevance === false
+                  ? 'text-red-500 bg-red-50'
+                  : 'text-slate-300 hover:text-red-500 hover:bg-red-50'
+              }`}
+            >
+              <ThumbsDown size={13} />
+            </button>
+
+            {/* Slack share */}
+            <button
+              onClick={handleShareSlack}
+              disabled={localItem.slack_shared || saving === 'slack'}
+              title={localItem.slack_shared ? 'Já copiado' : 'Copiar / Compartilhar'}
+              className={`p-1.5 rounded-lg transition-colors ${
+                localItem.slack_shared
+                  ? 'text-emerald-600 bg-emerald-50 cursor-default'
+                  : 'text-slate-300 hover:text-emerald-600 hover:bg-emerald-50'
+              }`}
+            >
+              <Send size={13} />
+            </button>
+
+            {/* External link (news only) */}
+            {itemUrl && !isYouTube && (
+              <a
+                href={itemUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Abrir fonte"
+                className="p-1.5 rounded-lg text-slate-300 hover:text-[#063793] hover:bg-[#E7ECF5] transition-colors"
+              >
+                <ExternalLink size={13} />
+              </a>
+            )}
+          </div>
+        </div>
+      </article>
+    </>
   )
 }
