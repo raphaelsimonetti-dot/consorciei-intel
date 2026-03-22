@@ -13,7 +13,12 @@ function App() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [filters, setFilters] = useState({ category: '', sourceType: '', relevance: '' })
+  const [filters, setFilters] = useState({
+    category: '',
+    sourceType: '',
+    relevance: '',
+    strategic: false,
+  })
 
   useEffect(() => {
     fetchItems(selectedDate)
@@ -27,9 +32,8 @@ function App() {
         .from('intel_items')
         .select('*')
         .eq('collected_date', date)
-        .order('relevance', { ascending: true }) // 'alta' < 'baixa' < 'média' alphabetically — we sort in JS
       if (supabaseError) throw supabaseError
-      // Sort: alta first, then média, then baixa
+
       const relevanceOrder = { alta: 0, média: 1, baixa: 2 }
       const sorted = (data || []).sort(
         (a, b) =>
@@ -44,11 +48,19 @@ function App() {
     }
   }
 
+  // Optimistic update from card interactions
+  function handleItemUpdate(id, updates) {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    )
+  }
+
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       if (filters.category && item.category !== filters.category) return false
       if (filters.sourceType && item.source_type !== filters.sourceType) return false
       if (filters.relevance && item.relevance !== filters.relevance) return false
+      if (filters.strategic && !item.is_strategic) return false
       return true
     })
   }, [items, filters])
@@ -62,7 +74,7 @@ function App() {
           selectedDate={selectedDate}
           onDateChange={(date) => {
             setSelectedDate(date)
-            setFilters({ category: '', sourceType: '', relevance: '' })
+            setFilters({ category: '', sourceType: '', relevance: '', strategic: false })
           }}
         />
 
@@ -75,7 +87,12 @@ function App() {
           filteredCount={filteredItems.length}
         />
 
-        <IntelFeed items={filteredItems} loading={loading} error={error} />
+        <IntelFeed
+          items={filteredItems}
+          loading={loading}
+          error={error}
+          onUpdate={handleItemUpdate}
+        />
       </main>
     </div>
   )

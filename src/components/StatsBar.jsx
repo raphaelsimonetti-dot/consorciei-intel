@@ -1,5 +1,3 @@
-import { CATEGORIES } from '../lib/constants'
-
 export default function StatsBar({ items, loading }) {
   if (loading) {
     return (
@@ -14,24 +12,21 @@ export default function StatsBar({ items, loading }) {
     )
   }
 
-  const counts = items.reduce((acc, item) => {
-    acc[item.category] = (acc[item.category] || 0) + 1
-    return acc
-  }, {})
-
   const newsCount = items.filter((i) => i.source_type === 'news').length
   const ytCount = items.filter((i) => i.source_type === 'youtube').length
   const altaCount = items.filter((i) => i.relevance === 'alta').length
+  const strategicCount = items.filter((i) => i.is_strategic === true).length
 
   const stats = [
     { label: 'Total de itens', value: items.length, color: 'text-white', icon: '📊' },
     { label: 'Notícias', value: newsCount, color: 'text-blue-400', icon: '📰' },
     { label: 'YouTube', value: ytCount, color: 'text-red-400', icon: '▶️' },
     { label: 'Alta relevância', value: altaCount, color: 'text-amber-400', icon: '🔥' },
+    { label: 'Estratégicos', value: strategicCount, color: 'text-yellow-400', icon: '🎯' },
   ]
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
       {stats.map((stat) => (
         <div
           key={stat.label}

@@ -1,12 +1,15 @@
 import { CATEGORIES, RELEVANCE, SOURCE_TYPES } from '../lib/constants'
-import { X } from 'lucide-react'
+import { X, Target } from 'lucide-react'
 
 export default function FilterBar({ filters, onChange, totalItems, filteredCount }) {
   const hasActiveFilters =
-    filters.category !== '' || filters.sourceType !== '' || filters.relevance !== ''
+    filters.category !== '' ||
+    filters.sourceType !== '' ||
+    filters.relevance !== '' ||
+    filters.strategic === true
 
   const clearAll = () => {
-    onChange({ category: '', sourceType: '', relevance: '' })
+    onChange({ category: '', sourceType: '', relevance: '', strategic: false })
   }
 
   return (
@@ -50,6 +53,20 @@ export default function FilterBar({ filters, onChange, totalItems, filteredCount
         ))}
       </select>
 
+      {/* Strategic toggle */}
+      <button
+        onClick={() => onChange({ ...filters, strategic: !filters.strategic })}
+        title="Exibir apenas itens estratégicos"
+        className={`flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border transition-colors ${
+          filters.strategic
+            ? 'text-yellow-400 bg-yellow-400/10 border-yellow-400/40'
+            : 'text-slate-400 bg-[#1a1d27] border-[#2a2d3e] hover:border-yellow-400/40 hover:text-yellow-400'
+        }`}
+      >
+        <Target size={13} />
+        Estratégicos
+      </button>
+
       {hasActiveFilters && (
         <button
           onClick={clearAll}
@@ -66,7 +83,9 @@ export default function FilterBar({ filters, onChange, totalItems, filteredCount
             <span className="text-slate-300">{filteredCount}</span> de {totalItems} itens
           </>
         ) : (
-          <>{totalItems} {totalItems === 1 ? 'item' : 'itens'}</>
+          <>
+            {totalItems} {totalItems === 1 ? 'item' : 'itens'}
+          </>
         )}
       </span>
     </div>
