@@ -29,20 +29,20 @@ export default function DateNavigation({ selectedDate, onDateChange }) {
   const capitalizedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)
 
   return (
-    <div className="flex items-center justify-between mb-6 bg-[#1a1d27] border border-[#2a2d3e] rounded-xl px-4 py-3">
+    <div className="flex items-center justify-between mb-6 bg-white border border-[#E2E8F0] rounded-xl px-4 py-3 shadow-sm">
       <button
         onClick={goBack}
-        className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-[#21253a] text-slate-400 hover:text-white transition-colors"
+        className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-[#E7ECF5] text-slate-400 hover:text-[#063793] transition-colors"
         title="Dia anterior"
       >
         <ChevronLeft size={18} />
       </button>
 
       <div className="flex items-center gap-3">
-        <Calendar size={16} className="text-blue-400 flex-shrink-0" />
-        <span className="text-white font-medium text-sm sm:text-base">{capitalizedDate}</span>
+        <Calendar size={16} className="text-[#063793] flex-shrink-0" />
+        <span className="text-[#063793] font-bold text-sm sm:text-base">{capitalizedDate}</span>
         {isAtToday && (
-          <span className="hidden sm:inline-block bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded-full border border-blue-500/30">
+          <span className="hidden sm:inline-block bg-[#063793]/10 text-[#063793] text-xs px-2 py-0.5 rounded-full border border-[#063793]/20 font-semibold">
             Hoje
           </span>
         )}
@@ -52,7 +52,7 @@ export default function DateNavigation({ selectedDate, onDateChange }) {
         {!isAtToday && (
           <button
             onClick={goToday}
-            className="hidden sm:block text-xs text-blue-400 hover:text-blue-300 px-2 py-1 rounded-lg hover:bg-blue-400/10 transition-colors"
+            className="hidden sm:block text-xs text-[#063793] hover:text-[#063793]/80 px-2 py-1 rounded-lg hover:bg-[#E7ECF5] transition-colors font-semibold"
           >
             Hoje
           </button>
@@ -62,8 +62,8 @@ export default function DateNavigation({ selectedDate, onDateChange }) {
           disabled={isAtToday}
           className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
             isAtToday
-              ? 'text-slate-600 cursor-not-allowed'
-              : 'hover:bg-[#21253a] text-slate-400 hover:text-white'
+              ? 'text-slate-300 cursor-not-allowed'
+              : 'hover:bg-[#E7ECF5] text-slate-400 hover:text-[#063793]'
           }`}
           title="Próximo dia"
         >

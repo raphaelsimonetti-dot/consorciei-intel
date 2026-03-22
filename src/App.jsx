@@ -66,7 +66,7 @@ function App() {
   }, [items, filters])
 
   return (
-    <div className="min-h-screen bg-[#0f1117] text-white">
+    <div className="min-h-screen bg-[#F2F5F9] text-[#333]">
       <Header />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">

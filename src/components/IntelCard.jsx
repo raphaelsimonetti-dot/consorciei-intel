@@ -134,8 +134,8 @@ export default function IntelCard({ item, onUpdate }) {
 
   return (
     <article
-      className={`bg-[#1a1d27] border rounded-xl p-4 hover:border-[#3b82f6]/40 transition-all group flex flex-col ${
-        isHighRelevance ? 'border-red-400/30' : 'border-[#2a2d3e]'
+      className={`bg-white border rounded-xl p-4 hover:shadow-md transition-all group flex flex-col shadow-sm ${
+        isHighRelevance ? 'border-amber-300' : 'border-[#E2E8F0]'
       }`}
     >
       {/* Top row: category + relevance + strategic + source */}
@@ -156,17 +156,17 @@ export default function IntelCard({ item, onUpdate }) {
         )}
 
         {localItem.is_strategic && (
-          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-yellow-400/10 text-yellow-400 border border-yellow-400/30">
+          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 font-semibold">
             <Target size={10} />
             {STRATEGIC_LABELS[localItem.strategic_category] || 'Estratégico'}
           </span>
         )}
 
-        <span className="ml-auto flex items-center gap-1 text-xs text-slate-500">
+        <span className="ml-auto flex items-center gap-1 text-xs text-slate-400">
           {isYouTube ? (
             <>
-              <Youtube size={12} className="text-red-400" />
-              <span className="text-red-400/80">YouTube</span>
+              <Youtube size={12} className="text-red-500" />
+              <span className="text-red-500">YouTube</span>
             </>
           ) : (
             <>
@@ -178,7 +178,7 @@ export default function IntelCard({ item, onUpdate }) {
       </div>
 
       {/* Title */}
-      <h3 className="text-white font-medium text-sm sm:text-base leading-snug mb-2 group-hover:text-blue-300 transition-colors">
+      <h3 className="text-[#063793] font-bold text-sm sm:text-base leading-snug mb-2 group-hover:text-[#063793]/80 transition-colors">
         {itemUrl ? (
           <a href={itemUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
             {localItem.title}
@@ -190,16 +190,16 @@ export default function IntelCard({ item, onUpdate }) {
 
       {/* Summary */}
       {localItem.summary && (
-        <p className="text-slate-400 text-sm leading-relaxed mb-3 line-clamp-3">
+        <p className="text-slate-500 text-sm leading-relaxed mb-3 line-clamp-3">
           {localItem.summary}
         </p>
       )}
 
       {/* YouTube-specific: channel + duration + watch link */}
       {isYouTube && (
-        <div className="flex flex-wrap items-center gap-3 mb-3 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center gap-3 mb-3 text-xs text-slate-400">
           {localItem.channel_name && (
-            <span className="text-slate-400">📺 {localItem.channel_name}</span>
+            <span className="text-slate-500">📺 {localItem.channel_name}</span>
           )}
           {localItem.duration_minutes && (
             <span className="flex items-center gap-1">
@@ -212,7 +212,7 @@ export default function IntelCard({ item, onUpdate }) {
               href={`https://youtube.com/watch?v=${localItem.video_id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-red-400/80 hover:text-red-400 transition-colors"
+              className="flex items-center gap-1 text-red-500 hover:text-red-600 transition-colors font-semibold"
             >
               <ExternalLink size={11} />
               Assistir
@@ -227,7 +227,7 @@ export default function IntelCard({ item, onUpdate }) {
           {keyTopics.slice(0, 4).map((topic, i) => (
             <span
               key={i}
-              className="text-xs bg-[#21253a] text-slate-400 px-2 py-0.5 rounded-md border border-[#2a2d3e]"
+              className="text-xs bg-[#E7ECF5] text-[#063793] px-2 py-0.5 rounded-md border border-[#063793]/10"
             >
               {topic}
             </span>
@@ -240,13 +240,13 @@ export default function IntelCard({ item, onUpdate }) {
         {tags.map((tag, i) => (
           <span
             key={i}
-            className="inline-flex items-center gap-1 text-xs bg-[#21253a] text-slate-500 px-2 py-0.5 rounded-md hover:bg-[#2a2d3e] transition-colors"
+            className="inline-flex items-center gap-1 text-xs bg-[#F2F5F9] text-slate-500 px-2 py-0.5 rounded-md border border-[#E2E8F0] hover:bg-[#E7ECF5] transition-colors"
           >
             #{tag}
             {isEditingTags && (
               <button
                 onClick={() => handleRemoveTag(tag)}
-                className="text-slate-600 hover:text-red-400 transition-colors ml-0.5"
+                className="text-slate-400 hover:text-red-500 transition-colors ml-0.5"
               >
                 <X size={10} />
               </button>
@@ -266,11 +266,11 @@ export default function IntelCard({ item, onUpdate }) {
               }}
               placeholder="nova tag"
               autoFocus
-              className="text-xs bg-[#21253a] text-slate-300 placeholder-slate-600 border border-[#3b4050] rounded-md px-2 py-0.5 w-24 focus:outline-none focus:border-blue-500/60"
+              className="text-xs bg-white text-slate-600 placeholder-slate-300 border border-[#E2E8F0] rounded-md px-2 py-0.5 w-24 focus:outline-none focus:border-[#063793]/40"
             />
             <button
               onClick={handleAddTag}
-              className="text-xs text-blue-400 hover:text-blue-300 px-1 font-bold"
+              className="text-xs text-[#063793] hover:text-[#063793]/70 px-1 font-bold"
             >
               +
             </button>
@@ -281,8 +281,8 @@ export default function IntelCard({ item, onUpdate }) {
           onClick={() => setIsEditingTags((v) => !v)}
           className={`text-xs px-1.5 py-0.5 rounded-md transition-colors ${
             isEditingTags
-              ? 'text-blue-400 bg-blue-400/10'
-              : 'text-slate-700 hover:text-slate-400 hover:bg-[#21253a]'
+              ? 'text-[#063793] bg-[#E7ECF5]'
+              : 'text-slate-300 hover:text-slate-500 hover:bg-[#F2F5F9]'
           }`}
           title="Editar tags"
         >
@@ -294,8 +294,8 @@ export default function IntelCard({ item, onUpdate }) {
       <div className="flex-1" />
 
       {/* Footer: date + action buttons */}
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#2a2d3e]">
-        <span className="text-xs text-slate-600">
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-[#E2E8F0]">
+        <span className="text-xs text-slate-400">
           {publishedDate ||
             (localItem.collected_date
               ? format(parseISO(localItem.collected_date), 'd MMM', { locale: ptBR })
@@ -310,8 +310,8 @@ export default function IntelCard({ item, onUpdate }) {
             title="Relevante"
             className={`p-1.5 rounded-lg transition-colors ${
               localItem.user_relevance === true
-                ? 'text-emerald-400 bg-emerald-400/10'
-                : 'text-slate-600 hover:text-emerald-400 hover:bg-emerald-400/10'
+                ? 'text-emerald-600 bg-emerald-50'
+                : 'text-slate-300 hover:text-emerald-600 hover:bg-emerald-50'
             }`}
           >
             <ThumbsUp size={13} />
@@ -324,8 +324,8 @@ export default function IntelCard({ item, onUpdate }) {
             title="Irrelevante"
             className={`p-1.5 rounded-lg transition-colors ${
               localItem.user_relevance === false
-                ? 'text-red-400 bg-red-400/10'
-                : 'text-slate-600 hover:text-red-400 hover:bg-red-400/10'
+                ? 'text-red-500 bg-red-50'
+                : 'text-slate-300 hover:text-red-500 hover:bg-red-50'
             }`}
           >
             <ThumbsDown size={13} />
@@ -335,11 +335,11 @@ export default function IntelCard({ item, onUpdate }) {
           <button
             onClick={handleShareSlack}
             disabled={localItem.slack_shared || saving === 'slack'}
-            title={localItem.slack_shared ? 'Já enviado ao Slack' : 'Compartilhar no Slack'}
+            title={localItem.slack_shared ? 'Já copiado' : 'Copiar / Compartilhar'}
             className={`p-1.5 rounded-lg transition-colors ${
               localItem.slack_shared
-                ? 'text-green-400 bg-green-400/10 cursor-default'
-                : 'text-slate-600 hover:text-green-400 hover:bg-green-400/10'
+                ? 'text-emerald-600 bg-emerald-50 cursor-default'
+                : 'text-slate-300 hover:text-emerald-600 hover:bg-emerald-50'
             }`}
           >
             <Send size={13} />
@@ -352,7 +352,7 @@ export default function IntelCard({ item, onUpdate }) {
               target="_blank"
               rel="noopener noreferrer"
               title="Abrir fonte"
-              className="p-1.5 rounded-lg text-slate-600 hover:text-blue-400 hover:bg-blue-400/10 transition-colors"
+              className="p-1.5 rounded-lg text-slate-300 hover:text-[#063793] hover:bg-[#E7ECF5] transition-colors"
             >
               <ExternalLink size={13} />
             </a>
