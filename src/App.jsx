@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { format } from 'date-fns'
+import { format, subDays } from 'date-fns'
 import { supabase } from './lib/supabase'
 import { signInWithGoogle } from './lib/actions'
 import Header from './components/Header'
@@ -7,6 +7,7 @@ import DateNavigation from './components/DateNavigation'
 import StatsBar from './components/StatsBar'
 import FilterBar from './components/FilterBar'
 import IntelFeed from './components/IntelFeed'
+import PeriodSummaryFeed from './components/PeriodSummaryFeed'
 import AvaliacoesView from './components/AvaliacoesView'
 
 function LoginScreen() {
@@ -81,6 +82,10 @@ function App() {
     relevance: '',
     strategic: false,
   })
+  const [period, setPeriod] = useState('hoje') // 'hoje' | '7dias' | '30dias'
+  const [periodItems, setPeriodItems] = useState([])
+  const [periodLoading, setPeriodLoading] = useState(false)
+  const [periodError, setPeriodError] = useState(null)
   const [activeTab, setActiveTab] = useState('intel')
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -99,8 +104,13 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (user && activeTab === 'intel') fetchItems(selectedDate)
-  }, [selectedDate, activeTab, user])
+    if (!user || activeTab !== 'intel') return
+    if (period === 'hoje') {
+      fetchItems(selectedDate)
+    } else {
+      fetchPeriodItems(period === '7dias' ? 7 : 30)
+    }
+  }, [selectedDate, activeTab, user, period])
 
   async function fetchItems(date) {
     setLoading(true)
@@ -126,8 +136,43 @@ function App() {
     }
   }
 
+  async function fetchPeriodItems(days) {
+    setPeriodLoading(true)
+    setPeriodError(null)
+    try {
+      const startDate = format(subDays(new Date(), days - 1), 'yyyy-MM-dd')
+      const { data, error: supabaseError } = await supabase
+        .from('intel_items')
+        .select('*')
+        .gte('collected_date', startDate)
+        .lte('collected_date', today)
+        .or('relevance.eq.alta,user_relevance.eq.true')
+      if (supabaseError) throw supabaseError
+
+      const filtered = (data || []).filter((item) => item.user_relevance !== false)
+      const relevanceOrder = { alta: 0, média: 1, baixa: 2 }
+      const sorted = filtered.sort((a, b) => {
+        if (b.collected_date !== a.collected_date)
+          return b.collected_date.localeCompare(a.collected_date)
+        return (relevanceOrder[a.relevance] ?? 3) - (relevanceOrder[b.relevance] ?? 3)
+      })
+      setPeriodItems(sorted)
+    } catch (err) {
+      setPeriodError(err.message || 'Erro desconhecido')
+      setPeriodItems([])
+    } finally {
+      setPeriodLoading(false)
+    }
+  }
+
   function handleItemUpdate(id, updates) {
     setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    )
+  }
+
+  function handlePeriodItemUpdate(id, updates) {
+    setPeriodItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
     )
   }
@@ -163,30 +208,64 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {activeTab === 'intel' ? (
           <>
-            <DateNavigation
-              selectedDate={selectedDate}
-              onDateChange={(date) => {
-                setSelectedDate(date)
-                setFilters({ category: '', sourceType: '', relevance: '', strategic: false })
-              }}
-            />
+            {/* Period selector */}
+            <div className="flex items-center gap-1 mb-4 bg-white border border-[#E2E8F0] rounded-xl p-1 w-fit shadow-sm">
+              {[
+                { value: 'hoje', label: 'Hoje' },
+                { value: '7dias', label: 'Últimos 7 dias' },
+                { value: '30dias', label: 'Últimos 30 dias' },
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setPeriod(value)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    period === value
+                      ? 'bg-[#063793] text-white'
+                      : 'text-slate-500 hover:text-[#063793] hover:bg-[#E7ECF5]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
-            <StatsBar items={items} loading={loading} />
+            {period === 'hoje' ? (
+              <>
+                <DateNavigation
+                  selectedDate={selectedDate}
+                  onDateChange={(date) => {
+                    setSelectedDate(date)
+                    setFilters({ category: '', sourceType: '', relevance: '', strategic: false })
+                  }}
+                />
 
-            <FilterBar
-              filters={filters}
-              onChange={setFilters}
-              totalItems={items.length}
-              filteredCount={filteredItems.length}
-            />
+                <StatsBar items={items} loading={loading} />
 
-            <IntelFeed
-              items={filteredItems}
-              loading={loading}
-              error={error}
-              onUpdate={handleItemUpdate}
-              user={user}
-            />
+                <FilterBar
+                  filters={filters}
+                  onChange={setFilters}
+                  totalItems={items.length}
+                  filteredCount={filteredItems.length}
+                />
+
+                <IntelFeed
+                  items={filteredItems}
+                  loading={loading}
+                  error={error}
+                  onUpdate={handleItemUpdate}
+                  user={user}
+                />
+              </>
+            ) : (
+              <PeriodSummaryFeed
+                items={periodItems}
+                loading={periodLoading}
+                error={periodError}
+                days={period === '7dias' ? 7 : 30}
+                onUpdate={handlePeriodItemUpdate}
+                user={user}
+              />
+            )}
           </>
         ) : (
           <AvaliacoesView />
