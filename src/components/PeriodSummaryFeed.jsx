@@ -27,7 +27,7 @@ function formatDateLabel(dateStr) {
   }
 }
 
-export default function PeriodSummaryFeed({ items, loading, error, days, onUpdate, user }) {
+export default function PeriodSummaryFeed({ items, loading, error, days, onUpdate, onRemove, user }) {
   if (loading) {
     return (
       <div>
@@ -99,7 +99,7 @@ export default function PeriodSummaryFeed({ items, loading, error, days, onUpdat
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {groups[date].map((item) => (
-              <IntelCard key={item.id} item={item} onUpdate={onUpdate} user={user} />
+              <IntelCard key={item.id} item={item} onUpdate={onUpdate} onRemove={onRemove} user={user} />
             ))}
           </div>
         </div>

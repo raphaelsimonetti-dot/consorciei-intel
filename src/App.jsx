@@ -120,6 +120,7 @@ function App() {
         .from('intel_items')
         .select('*')
         .eq('collected_date', date)
+        .neq('is_deleted', true)
       if (supabaseError) throw supabaseError
 
       const relevanceOrder = { alta: 0, média: 1, baixa: 2 }
@@ -146,6 +147,7 @@ function App() {
         .select('*')
         .gte('collected_date', startDate)
         .lte('collected_date', today)
+        .neq('is_deleted', true)
         .or('relevance.eq.alta,user_relevance.eq.true')
       if (supabaseError) throw supabaseError
 
@@ -175,6 +177,14 @@ function App() {
     setPeriodItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
     )
+  }
+
+  function handleItemRemove(id) {
+    setItems((prev) => prev.filter((item) => item.id !== id))
+  }
+
+  function handlePeriodItemRemove(id) {
+    setPeriodItems((prev) => prev.filter((item) => item.id !== id))
   }
 
   const filteredItems = useMemo(() => {
@@ -253,6 +263,7 @@ function App() {
                   loading={loading}
                   error={error}
                   onUpdate={handleItemUpdate}
+                  onRemove={handleItemRemove}
                   user={user}
                 />
               </>
@@ -263,6 +274,7 @@ function App() {
                 error={periodError}
                 days={period === '7dias' ? 7 : 30}
                 onUpdate={handlePeriodItemUpdate}
+                onRemove={handlePeriodItemRemove}
                 user={user}
               />
             )}

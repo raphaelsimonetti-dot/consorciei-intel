@@ -9,10 +9,11 @@ import {
   Send,
   X,
   Target,
+  Trash2,
 } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { updateUserRelevance, updateTags, markSlackShared, saveFeedback } from '../lib/actions'
+import { updateUserRelevance, updateTags, markSlackShared, saveFeedback, deleteItem, updateItemRelevance } from '../lib/actions'
 import FeedbackModal from './FeedbackModal'
 
 const STRATEGIC_LABELS = {
@@ -23,12 +24,15 @@ const STRATEGIC_LABELS = {
   pessoas: 'Pessoas-chave',
 }
 
-export default function IntelCard({ item, onUpdate, user }) {
+const ADMIN_EMAIL = 'raphael.simonetti@consorciei.com.br'
+
+export default function IntelCard({ item, onUpdate, onRemove, user }) {
   const [localItem, setLocalItem] = useState(item)
   const [isEditingTags, setIsEditingTags] = useState(false)
   const [newTagInput, setNewTagInput] = useState('')
-  const [saving, setSaving] = useState(null) // 'relevance' | 'slack'
+  const [saving, setSaving] = useState(null) // 'relevance' | 'slack' | 'delete' | 'relevance_change'
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const isAdmin = user?.email === ADMIN_EMAIL
 
   const category = CATEGORIES[localItem.category] || {
     label: localItem.category,
@@ -185,6 +189,24 @@ export default function IntelCard({ item, onUpdate, user }) {
     setLocalItem((prev) => ({ ...prev, ...updates }))
     onUpdate?.(localItem.id, { slack_shared: true })
     await markSlackShared(localItem.id)
+    setSaving(null)
+  }
+
+  async function handleDelete() {
+    if (!window.confirm('Excluir esta notícia?')) return
+    setSaving('delete')
+    await deleteItem(localItem.id)
+    onRemove?.(localItem.id)
+    setSaving(null)
+  }
+
+  async function handleRelevanceChange(newRelevance) {
+    if (newRelevance === localItem.relevance) return
+    setSaving('relevance_change')
+    const updates = { relevance: newRelevance }
+    setLocalItem((prev) => ({ ...prev, ...updates }))
+    onUpdate?.(localItem.id, updates)
+    await updateItemRelevance(localItem.id, newRelevance)
     setSaving(null)
   }
 
@@ -421,6 +443,36 @@ export default function IntelCard({ item, onUpdate, user }) {
               >
                 <ExternalLink size={13} />
               </a>
+            )}
+
+            {/* Admin controls */}
+            {isAdmin && (
+              <>
+                <div className="w-px h-4 bg-[#E2E8F0] mx-1" />
+
+                {/* Relevance selector */}
+                <select
+                  value={localItem.relevance || ''}
+                  onChange={(e) => handleRelevanceChange(e.target.value)}
+                  disabled={saving === 'relevance_change'}
+                  title="Mudar relevância"
+                  className="text-xs text-slate-400 border border-[#E2E8F0] rounded-lg px-1.5 py-1 bg-white hover:border-[#063793]/30 focus:outline-none focus:border-[#063793]/50 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <option value="alta">Alta</option>
+                  <option value="média">Média</option>
+                  <option value="baixa">Baixa</option>
+                </select>
+
+                {/* Delete */}
+                <button
+                  onClick={handleDelete}
+                  disabled={saving === 'delete'}
+                  title="Excluir notícia"
+                  className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </>
             )}
           </div>
         </div>

@@ -17,7 +17,7 @@ function SkeletonCard() {
   )
 }
 
-export default function IntelFeed({ items, loading, error, onUpdate, user }) {
+export default function IntelFeed({ items, loading, error, onUpdate, onRemove, user }) {
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -67,7 +67,7 @@ export default function IntelFeed({ items, loading, error, onUpdate, user }) {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {highRelevance.map((item) => (
-              <IntelCard key={item.id} item={item} onUpdate={onUpdate} user={user} />
+              <IntelCard key={item.id} item={item} onUpdate={onUpdate} onRemove={onRemove} user={user} />
             ))}
           </div>
         </div>
@@ -85,7 +85,7 @@ export default function IntelFeed({ items, loading, error, onUpdate, user }) {
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {rest.map((item) => (
-              <IntelCard key={item.id} item={item} onUpdate={onUpdate} user={user} />
+              <IntelCard key={item.id} item={item} onUpdate={onUpdate} onRemove={onRemove} user={user} />
             ))}
           </div>
         </div>

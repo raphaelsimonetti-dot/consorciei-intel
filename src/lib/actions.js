@@ -32,6 +32,20 @@ export async function saveFeedback(feedbackData) {
   return supabase.from('intel_feedback').insert([feedbackData])
 }
 
+export async function deleteItem(id) {
+  return supabase
+    .from('intel_items')
+    .update({ is_deleted: true })
+    .eq('id', id)
+}
+
+export async function updateItemRelevance(id, relevance) {
+  return supabase
+    .from('intel_items')
+    .update({ relevance })
+    .eq('id', id)
+}
+
 export async function signInWithGoogle() {
   return supabase.auth.signInWithOAuth({
     provider: 'google',
